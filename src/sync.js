@@ -12,6 +12,8 @@ const FILES = ['README.md', 'contributing.md', '.github/pull_request_template.md
 const KIT_DIR = path.join(__dirname, '..', 'files');
 const FRAGMENT = /(<!-- awesome:([a-z-]+) -->)([\s\S]*?)(<!-- \/awesome:\2 -->)/g;
 const OPENER = /<!-- awesome:([a-z-]+) -->/g;
+/** Markers of v1, whose text now sits inside the rules, checklist and footer blocks. */
+const RETIRED = ['stars', 'inactive', 'scope', 'star', 'maintainer'];
 
 /** The guide block: contributing.md from its how-to-add heading to the license line. */
 const GUIDE = [
@@ -112,6 +114,7 @@ function fragments(config) {
 function syncText(text, values) {
   const names = [];
   const synced = text.replace(FRAGMENT, (match, open, name, inner, close) => {
+    if (RETIRED.includes(name)) throw new Error(`retired fragment "${name}": replace it and its text with the block that now carries it (rules, checklist or footer)`);
     if (!(name in values)) throw new Error(`unknown fragment "${name}"`);
     names.push(name);
     const lead = inner.match(/^\s*/)[0];

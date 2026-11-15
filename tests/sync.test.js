@@ -98,6 +98,16 @@ test('an unknown, unclosed or missing fragment fails loudly and writes nothing',
   }
 });
 
+test('a retired marker fails, naming the block that replaces it, and writes nothing', () => {
+  for (const name of ['stars', 'inactive', 'scope', 'star', 'maintainer']) {
+    const dir = listCopy();
+    fs.appendFileSync(path.join(dir, 'README.md'), `<!-- awesome:${name} -->x<!-- /awesome:${name} -->\n`);
+    const before = DOCS.map((file) => read(dir, file));
+    assert.throws(() => sync(dir), new RegExp(`retired fragment "${name}": replace it and its text with the block that now carries it`));
+    assert.deepEqual(DOCS.map((file) => read(dir, file)), before);
+  }
+});
+
 test('sync reads .github/awesome.json: a list with only a top-level awesome.json fails, naming that path', () => {
   const dir = listCopy();
   fs.renameSync(path.join(dir, CONFIG), path.join(dir, 'awesome.json'));

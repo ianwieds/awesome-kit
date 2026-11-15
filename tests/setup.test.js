@@ -57,7 +57,7 @@ test('setup turns an empty git folder into a whole list and applies the shared s
   assert.equal(status, 0, stderr);
   assert.equal(stdout, [
     'scaffolded: .github/assets/hero.gif, .github/awesome.json, .github/pull_request_template.md, README.md, contributing.md',
-    'workflows: maintenance.yml, pr-check.yml, sweep.yml',
+    'workflows: .github/workflows/maintenance.yml, .github/workflows/pr-check.yml, .github/workflows/sweep.yml',
     'synced: README.md, contributing.md, .github/pull_request_template.md, .github/ISSUE_TEMPLATE/config.yml, .github/ISSUE_TEMPLATE/report.yml, .github/ISSUE_TEMPLATE/suggest.yml, LICENSE, code_of_conduct.md',
     'settings: description, has_wiki, has_projects, delete_branch_on_merge, topics',
     '',
@@ -111,16 +111,18 @@ test('a second run writes nothing, changes no setting and prints already set up'
 });
 
 test('setup never overwrites an existing list-owned file, and sets the description from its config', () => {
-  const dir = gitFolder();
-  for (const file of [...DOCS, '.github/awesome.json']) {
+  const dir = gitFolder('git@github.com:someone/awesome-fixture.git');
+  const owned = [...DOCS, '.github/awesome.json', '.github/assets/hero.gif'];
+  for (const file of owned) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-    fs.writeFileSync(path.join(dir, file), `${read(LIST, file)}${file.endsWith('.md') ? '\nA line of the list\'s own.\n' : ''}`);
+    const own = file.endsWith('.md') ? '\nA line of the list\'s own.\n' : '';
+    fs.writeFileSync(path.join(dir, file), file.endsWith('.gif') ? 'a gif of the list\'s own' : `${read(LIST, file)}${own}`);
   }
-  const before = Object.fromEntries([...DOCS, '.github/awesome.json'].map((file) => [file, read(dir, file)]));
+  const before = Object.fromEntries(owned.map((file) => [file, read(dir, file)]));
 
   const { status, stdout, stderr, calls } = runSetup(dir, FRESH);
   assert.equal(status, 0, stderr);
-  assert.match(stdout, /^scaffolded: \.github\/assets\/hero\.gif\n/);
+  assert.doesNotMatch(stdout, /scaffolded/);
   for (const [file, text] of Object.entries(before)) assert.equal(read(dir, file), text, file);
   const patch = calls.find(({ args }) => args.includes('PATCH'));
   assert.equal(JSON.parse(patch.body).description, 'A curated list of Your Topic libraries, tools and guides.');
@@ -134,7 +136,7 @@ test('setup rewrites a changed or missing workflow file', () => {
 
   const { status, stdout, stderr } = runSetup(dir, SET_UP);
   assert.equal(status, 0, stderr);
-  assert.equal(stdout, 'workflows: pr-check.yml, sweep.yml\n');
+  assert.equal(stdout, 'workflows: .github/workflows/pr-check.yml, .github/workflows/sweep.yml\n');
   for (const file of ['pr-check.yml', 'sweep.yml']) assert.equal(read(dir, `.github/workflows/${file}`), read(KIT, `workflows/${file}`), file);
 });
 
@@ -162,9 +164,38 @@ test('the repo comes from any GitHub origin form, and the topic from its name', 
     const config = JSON.parse(read(dir, '.github/awesome.json'));
     assert.deepEqual([config.repo, config.topic], [REPO, 'Voice Agents'], origin);
   }
-  const dir = gitFolder('git@github.com:someone/awesome-ai-devtools.git');
+  const dir = gitFolder('git@github.com:someone/awesome-ai--devtools.git');
   const nameless = JSON.stringify({ login: 'someone', name: null, html_url: 'https://github.com/someone' });
   assert.equal(runSetup(dir, { ...FRESH, FAKE_GH_USER: nameless }).status, 0);
   const config = JSON.parse(read(dir, '.github/awesome.json'));
   assert.deepEqual([config.topic, config.maintainer.name], ['Ai Devtools', 'someone']);
+});
+
+test('a folder below the top of its git repository fails and writes nothing', () => {
+  const dir = gitFolder();
+  const sub = path.join(dir, 'list');
+  fs.mkdirSync(sub);
+  const { status, stderr, calls } = runSetup(sub, FRESH);
+  assert.notEqual(status, 0);
+  assert.match(stderr, /is not the top of a git repository/);
+  assert.deepEqual(snapshot(dir), {});
+  assert.deepEqual(calls, []);
+});
+
+test('an existing awesome.json that is bad or names another repo fails before any write', () => {
+  const cases = [
+    [{ repo: 'someone/awesome-other' }, /\.github\/awesome\.json names someone\/awesome-other, but origin is someone\/awesome-voice-agents/],
+    [{ minStars: -1 }, /minStars must be a whole number/],
+  ];
+  for (const [change, message] of cases) {
+    const dir = gitFolder();
+    fs.mkdirSync(path.join(dir, '.github'));
+    fs.writeFileSync(path.join(dir, '.github/awesome.json'), JSON.stringify({ ...JSON.parse(read(LIST, '.github/awesome.json')), repo: REPO, ...change }));
+    const before = snapshot(dir);
+    const { status, stderr, calls } = runSetup(dir, FRESH);
+    assert.notEqual(status, 0);
+    assert.match(stderr, message);
+    assert.deepEqual(snapshot(dir), before);
+    assert.deepEqual(calls.filter(({ args }) => args.includes('--method')), []);
+  }
 });

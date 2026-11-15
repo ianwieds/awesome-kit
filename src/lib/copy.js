@@ -16,7 +16,7 @@ const path = require('node:path');
  */
 function copyFiles(source, target, { overwrite }) {
   const written = fs.readdirSync(source, { recursive: true })
-    .filter((file) => fs.statSync(path.join(source, file)).isFile())
+    .filter((file) => path.basename(file) !== '.DS_Store' && fs.statSync(path.join(source, file)).isFile())
     .filter((file) => {
       const to = path.join(target, file);
       if (!fs.existsSync(to)) return true;

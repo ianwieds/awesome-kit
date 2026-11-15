@@ -41,12 +41,19 @@ test('an unknown command or a missing argument prints the usage line and exits 2
   }
 });
 
-test('setup is a known command: in a folder with no git origin it fails on that, not on usage', () => {
+test('setup is a known command: in a folder outside git it fails on that, not on usage', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'awesome-cli-'));
   const result = cli(['setup', dir], FIXTURES);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /no "origin" remote/);
+  assert.match(result.stderr, /is not a git repository/);
   assert.deepEqual(fs.readdirSync(dir), []);
+});
+
+test('setup on a folder that does not exist fails naming the folder', () => {
+  const missing = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'awesome-cli-')), 'missing');
+  const result = cli(['setup', missing], FIXTURES);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot run git in .*missing: /);
 });
 
 test('sync syncs the folder it is given, then reports it already in sync', () => {

@@ -15,8 +15,9 @@ function ghApi(route, { method, body } = {}) {
   if (method) args.push('--method', method);
   if (body) args.push('--input', '-');
   const result = spawnSync('gh', args, { input: body ? JSON.stringify(body) : undefined, encoding: 'utf8' });
-  if (result.error) throw new Error(`gh ${args.join(' ')} failed: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`gh ${args.join(' ')} failed: ${result.stderr.trim()}`);
+  if (result.error || result.status !== 0) {
+    throw new Error(`gh ${args.join(' ')} failed: ${result.error ? result.error.message : result.stderr.trim()}`);
+  }
   return result.stdout.trim() ? JSON.parse(result.stdout) : null;
 }
 

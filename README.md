@@ -23,7 +23,14 @@ Then edit `.github/awesome.json` (the defaults below are a starting point), repl
 
 The `awesome.json` defaults: `repo` from `origin`; `topic` from the repository name with `awesome-` dropped and each word capitalized (`awesome-voice-agents` gives `Voice Agents`); the tagline, scope and hero alt text built from the topic; accent `FFA000`; `minStars` 10; `maxInactiveMonths` 12; the maintainer from the signed-in GitHub user's name (or login) and profile.
 
-A folder with no `origin`, an `origin` that is not on GitHub, or no `gh` login fails loudly before anything is written. Setup commits and pushes nothing. Run it again on an existing list to bring its workflows and settings back to the kit's.
+Setup fails loudly before anything is written when:
+
+- the folder is missing, is not a git repository, or is not the top of one;
+- it has no `origin`, or an `origin` that is not on GitHub;
+- an existing `.github/awesome.json` is bad, or names another repository than `origin`;
+- `gh` is not signed in.
+
+Setup commits and pushes nothing. Run it again on an existing list to bring its workflows and settings back to the kit's.
 
 ## How a list uses it
 
@@ -86,7 +93,7 @@ npx github:ianwieds/awesome-kit check base.md head.md   # judge a README change,
 3. Tag the release and push the tag: `git tag v2.x.y && git push origin v2.x.y`.
 4. Move `v2` to it, which is what every list follows: `git tag -f v2 v2.x.y && git push -f origin v2`.
 
-Every list picks up the release at its next run. A breaking change gets the next major tag (`v3`), which a list opts into by running that version's `setup`, which rewrites its three workflow files.
+Every list picks up the release at its next run. `v1` is frozen at 1.0.0 and gets no more releases. A breaking change gets the next major tag (`v3`), which a list opts into by running that version's `setup`, which rewrites its three workflow files. A `v1` list moves to `v2` this way, after replacing each retired marker sync names, and its text, with the block that now carries it.
 
 ## License
 

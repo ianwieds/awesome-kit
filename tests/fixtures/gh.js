@@ -34,10 +34,12 @@ const markerSearch = (api && /\/issues\/\d+\/comments$/.test(api)) || (args[0] =
 
 if (contentsRead) process.stdout.write(fs.readFileSync(process.env.FAKE_GH_HEAD, 'utf8'));
 if (markerSearch && process.env.FAKE_GH_FOUND) process.stdout.write(`${process.env.FAKE_GH_FOUND}\n`);
-if (api === 'user' && !process.env.FAKE_GH_USER) {
-  process.stderr.write('To get started with GitHub CLI, please run:  gh auth login\n');
-  process.exit(4);
+if (api === 'user') {
+  if (!process.env.FAKE_GH_USER) {
+    process.stderr.write('To get started with GitHub CLI, please run:  gh auth login\n');
+    process.exit(4);
+  }
+  process.stdout.write(process.env.FAKE_GH_USER);
 }
-if (api === 'user') process.stdout.write(process.env.FAKE_GH_USER);
 if (read && /^repos\/[^/]+\/[^/]+$/.test(api) && process.env.FAKE_GH_REPO) process.stdout.write(process.env.FAKE_GH_REPO);
 if (read && /^repos\/[^/]+\/[^/]+\/topics$/.test(api) && process.env.FAKE_GH_TOPICS) process.stdout.write(process.env.FAKE_GH_TOPICS);

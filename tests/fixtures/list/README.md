@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://awesome.re"><img src="https://awesome.re/badge.svg" alt="Awesome"></a>
   <a href="contributing.md"><img src="https://img.shields.io/badge/PRs-welcome-FFA000" alt="PRs welcome"></a>
-  <a href="https://github.com/ianwieds/awesome-template/commits/main"><img src="https://img.shields.io/github/last-commit/ianwieds/awesome-template?color=FFA000" alt="Last commit"></a>
+  <a href="https://github.com/someone/awesome-fixture/commits/main"><img src="https://img.shields.io/github/last-commit/someone/awesome-fixture?color=FFA000" alt="Last commit"></a>
 </p>
 <!-- /awesome:badges -->
 

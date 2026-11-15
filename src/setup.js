@@ -14,15 +14,23 @@ const { ghApi } = require('./lib/gh');
 
 const SCAFFOLD_DIR = path.join(__dirname, '..', 'scaffold');
 const WORKFLOW_DIR = path.join(__dirname, '..', 'workflows');
+const WORKFLOWS_PATH = '.github/workflows';
 const ORIGIN = /(?:^|[@/])github\.com[:/]([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/;
 const TOPICS = ['awesome', 'awesome-list'];
 
 /**
- * The GitHub repository the folder's origin remote points at.
+ * The GitHub repository the origin remote points at, for a folder at the top
+ * of its git repository.
  * @param {string} root
  * @returns {{ owner: string, name: string }}
  */
 function originRepo(root) {
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: root, encoding: 'utf8' });
+  if (top.error) throw new Error(`cannot run git in ${root}: ${top.error.message}`);
+  if (top.status !== 0) throw new Error(`${root} is not a git repository: run setup in the list's own repository folder`);
+  if (fs.realpathSync(top.stdout.trim()) !== fs.realpathSync(root)) {
+    throw new Error(`${root} is not the top of a git repository: run setup in the list's own repository folder`);
+  }
   const result = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) throw new Error(`no "origin" remote in ${root}: setup needs the list's GitHub repository as origin`);
   const url = result.stdout.trim();
@@ -39,7 +47,7 @@ function originRepo(root) {
  * @returns {object} awesome.json
  */
 function defaultConfig(repo, user) {
-  const topic = repo.name.replace(/^awesome-/, '').split('-')
+  const topic = repo.name.replace(/^awesome-/, '').split('-').filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
   return {
@@ -65,7 +73,6 @@ function scaffold(root, config) {
   const written = copyFiles(SCAFFOLD_DIR, root, { overwrite: false });
   const configFile = path.join(root, CONFIG_PATH);
   if (fs.existsSync(configFile)) return written;
-  fs.mkdirSync(path.dirname(configFile), { recursive: true });
   fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`);
   return [...written, CONFIG_PATH].sort();
 }
@@ -90,20 +97,35 @@ function applySettings(repo, tagline) {
 }
 
 /**
- * Set up the list in a folder. The origin and the gh login are checked
- * before anything is written.
+ * Check an existing config before any write: it must load, and name the
+ * origin's repository.
+ * @param {string} root
+ * @param {string} repo - owner/name, from origin
+ */
+function checkExistingConfig(root, repo) {
+  const file = path.join(root, CONFIG_PATH);
+  if (!fs.existsSync(file)) return;
+  const named = loadConfig(file).repo;
+  if (named.toLowerCase() !== repo.toLowerCase()) throw new Error(`${CONFIG_PATH} names ${named}, but origin is ${repo}`);
+}
+
+/**
+ * Set up the list in a folder. The origin, an existing config and the gh
+ * login are checked before anything is written.
  * @param {string} root - the list's git folder
  * @returns {string[]} one line per step that changed something, empty when none did
  */
 function setup(root) {
   const repo = originRepo(root);
+  const slug = `${repo.owner}/${repo.name}`;
+  checkExistingConfig(root, slug);
   const user = ghApi('user');
 
   const steps = [
     ['scaffolded', scaffold(root, defaultConfig(repo, user))],
-    ['workflows', copyFiles(WORKFLOW_DIR, path.join(root, '.github', 'workflows'), { overwrite: true })],
+    ['workflows', copyFiles(WORKFLOW_DIR, path.join(root, WORKFLOWS_PATH), { overwrite: true }).map((file) => `${WORKFLOWS_PATH}/${file}`)],
     ['synced', sync(root)],
-    ['settings', applySettings(`${repo.owner}/${repo.name}`, loadConfig(path.join(root, CONFIG_PATH)).tagline)],
+    ['settings', applySettings(slug, loadConfig(path.join(root, CONFIG_PATH)).tagline)],
   ];
   return steps.filter(([, done]) => done.length).map(([label, done]) => `${label}: ${done.join(', ')}`);
 }

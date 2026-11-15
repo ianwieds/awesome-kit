@@ -15,7 +15,13 @@ const COUNTS = ['minStars', 'maxInactiveMonths'];
  * @returns {object} the parsed config
  */
 function loadConfig(file) {
-  const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new Error(`${file}: not valid JSON (${error.message})`);
+  }
   const problems = [];
 
   for (const key of STRINGS) {

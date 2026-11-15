@@ -29,5 +29,11 @@ test('a mistyped or missing value fails loudly, naming every problem', () => {
 });
 
 test('repo must be owner/name', () => {
-  assert.throws(() => loadConfig(write({ ...real(), repo: 'awesome-template' })), /repo must be "owner\/name"/);
+  assert.throws(() => loadConfig(write({ ...real(), repo: 'awesome-fixture' })), /repo must be "owner\/name"/);
+});
+
+test('a file that is not JSON fails naming the file', () => {
+  const file = write({});
+  fs.writeFileSync(file, '{bad');
+  assert.throws(() => loadConfig(file), (error) => error.message.startsWith(`${file}: not valid JSON`));
 });
