@@ -1,6 +1,6 @@
 {
   "name": "awesome-kit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "The shared engine every awesome list calls: pull request checks, the weekly sweep, and the daily sync.",
   "license": "MIT",
