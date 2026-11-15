@@ -1,0 +1,44 @@
+name: awesome-kit
+description: Run one awesome-list job (pr-check, sweep or maintenance) at the kit version the list names.
+
+inputs:
+  command:
+    description: "The job to run: pr-check, sweep or maintenance."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Accept the command
+      shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+      run: |
+        case "$COMMAND" in
+          pr-check | sweep | maintenance) ;;
+          *) echo "unknown command: $COMMAND"; exit 1 ;;
+        esac
+
+    # Only maintenance pushes, so only it keeps the token in the checkout.
+    - uses: actions/checkout@v4
+      with:
+        # Maintenance takes the branch's current tip, not its triggering commit: a
+        # queued run would otherwise fail its push after an earlier run's sync commit.
+        ref: ${{ inputs.command == 'maintenance' && github.ref_name || '' }}
+        fetch-depth: 0
+        persist-credentials: ${{ inputs.command == 'maintenance' }}
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+
+    - name: Run the job
+      shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+        GH_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: bash "$GITHUB_ACTION_PATH/jobs/$COMMAND.sh"

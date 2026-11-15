@@ -1,0 +1,21 @@
+{
+  "name": "awesome-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The shared engine every awesome list calls: pull request checks, the weekly sweep, and the daily sync.",
+  "license": "MIT",
+  "bin": {
+    "awesome-kit": "bin/awesome.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "files/"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}
