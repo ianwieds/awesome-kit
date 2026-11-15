@@ -6,10 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-15
+
 ### Fixed
-- [#7](../../issues/7) Thanks [@ianwieds]! - Before any write, setup checks the folder is the top of its git repository, and that an existing `.github/awesome.json` loads and names the origin's repository.
-- [#7](../../issues/7) Thanks [@ianwieds]! - A retired v1 marker fails sync naming the block that replaces it, instead of `unknown fragment`, and an `awesome.json` that is not JSON fails naming the file.
-- [#7](../../issues/7) Thanks [@ianwieds]! - Setup's `workflows:` line lists repo-relative paths, a doubled hyphen in a repository name no longer doubles a space in the default topic, and no `.DS_Store` is copied into a list.
+- [#7](../../issues/7) [`48b03e4`](../../commit/48b03e4) Thanks [@ianwieds]! - Before any write, setup checks the folder is the top of its git repository, and that an existing `.github/awesome.json` loads and names the origin's repository.
+- [#7](../../issues/7) [`48b03e4`](../../commit/48b03e4) Thanks [@ianwieds]! - A retired v1 marker fails sync naming the block that replaces it, instead of `unknown fragment`, and an `awesome.json` that is not JSON fails naming the file.
+- [#7](../../issues/7) [`48b03e4`](../../commit/48b03e4) Thanks [@ianwieds]! - Setup's `workflows:` line lists repo-relative paths, a doubled hyphen in a repository name no longer doubles a space in the default topic, and no `.DS_Store` is copied into a list.
 
 ## [2.0.0] - 2026-11-15
 
