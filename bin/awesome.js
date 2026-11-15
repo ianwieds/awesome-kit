@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * The awesome-kit CLI, one entry for every command a list runs:
+ *   setup [dir]                        scaffold, write the workflows, sync, apply repo settings
  *   sync [dir]                         write the markers and kit-owned files
  *   sweep [dir]                        print the sweep report
  *   check <base.md> <head.md> [config] print the PR report (exit 0 pass, 1 fail)
@@ -8,16 +9,26 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const { setup } = require('../src/setup');
 const { sync } = require('../src/sync');
 const { sweep } = require('../src/sweep');
 const { checkPr } = require('../src/check-pr');
 const { loadConfig, CONFIG_PATH } = require('../src/lib/config');
 const { nodeVersionProblem } = require('../src/lib/node-version');
 
-const USAGE = 'usage: awesome-kit sync [dir] | sweep [dir] | check <base.md> <head.md> [config]';
+const USAGE = 'usage: awesome-kit setup [dir] | sync [dir] | sweep [dir] | check <base.md> <head.md> [config]';
 
 /** Each command: its argument count bounds and its run, resolving to the exit code. */
 const COMMANDS = {
+  setup: {
+    min: 0,
+    max: 1,
+    run: async ([dir = '.']) => {
+      const done = setup(path.resolve(dir));
+      console.log(done.length ? done.join('\n') : 'already set up');
+      return 0;
+    },
+  },
   sync: {
     min: 0,
     max: 1,

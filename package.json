@@ -10,7 +10,9 @@
   "files": [
     "bin/",
     "src/",
-    "files/"
+    "files/",
+    "scaffold/",
+    "workflows/"
   ],
   "engines": {
     "node": ">=22"

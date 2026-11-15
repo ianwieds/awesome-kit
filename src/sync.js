@@ -6,11 +6,39 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadConfig, CONFIG_PATH } = require('./lib/config');
+const { copyFiles } = require('./lib/copy');
 
 const FILES = ['README.md', 'contributing.md', '.github/pull_request_template.md'];
 const KIT_DIR = path.join(__dirname, '..', 'files');
 const FRAGMENT = /(<!-- awesome:([a-z-]+) -->)([\s\S]*?)(<!-- \/awesome:\2 -->)/g;
 const OPENER = /<!-- awesome:([a-z-]+) -->/g;
+
+/** The guide block: contributing.md from its how-to-add heading to the license line. */
+const GUIDE = [
+  '## How to add an entry',
+  '',
+  '1. Pick the section (and subsection, where there is one) that fits best.',
+  '2. Add one line in this format:',
+  '',
+  '   ```markdown',
+  '   - [Name](https://link) - Short description.',
+  '   ```',
+  '',
+  '3. Keep the section in alphabetical order by name (case-insensitive).',
+  '4. Write the description in your own words: one short sentence, 100 characters at most, ending with a period. Say what it does, plainly. No marketing words, no star counts, no emoji, no em dashes.',
+  '5. Link the original source: the repository or product page for a project, the original post for an article or talk. No tracking links or mirrors.',
+  '',
+  '## Pull requests',
+  '',
+  '- One entry per pull request.',
+  '- Use a title like `Add <Name>`.',
+  '- Search the list first to make sure the entry is not already here.',
+  '- Removals and fixes for dead links, archived repos or wrong descriptions are welcome; say why in the pull request.',
+  '',
+  'Every pull request is checked automatically against the rules above. One that fails is closed with a comment that says what to fix; a fixed pull request is welcome.',
+  '',
+  'By contributing, you agree to release your contribution under the [CC0 1.0](LICENSE) dedication.',
+];
 
 /**
  * Escape a value for an HTML context.
@@ -22,12 +50,16 @@ function escapeHtml(text) {
 }
 
 /**
- * The content of every fragment, built from the config.
+ * The content of every fragment, built from the config. Where a block's
+ * closing marker sits (own line, or end of the last line) is the list's.
  * @param {object} config - awesome.json
  * @returns {Record<string, string>}
  */
 function fragments(config) {
   const { repo, accent, minStars, maxInactiveMonths } = config;
+  const inactive = maxInactiveMonths > 0
+    ? `not archived, not marked deprecated by its owner, and with a commit in the last ${maxInactiveMonths} months`
+    : 'not archived and not marked deprecated by its owner';
   return {
     hero: `<img src=".github/assets/hero.gif" width="100%" alt="${escapeHtml(config.heroAlt)}">`,
     title: `<h1 align="center">Awesome ${escapeHtml(config.topic)}</h1>`,
@@ -39,13 +71,35 @@ function fragments(config) {
       `  <a href="https://github.com/${repo}/commits/main"><img src="https://img.shields.io/github/last-commit/${repo}?color=${accent}" alt="Last commit"></a>`,
       '</p>',
     ].join('\n'),
-    maintainer: `Maintained by [${config.maintainer.name}](${config.maintainer.url}).`,
-    stars: `at least ${minStars} stars`,
-    inactive: maxInactiveMonths > 0
-      ? `not archived, not marked deprecated by its owner, and with a commit in the last ${maxInactiveMonths} months`
-      : 'not archived and not marked deprecated by its owner',
-    scope: config.scope,
-    star: 'I starred this repo if I found it helpful.',
+    rules: [
+      'An entry must be:',
+      '',
+      '- **Public:** a repository or page anyone can open without signing in.',
+      '- **Documented:** a README or docs page that explains what it does and how to use it.',
+      `- **Maintained:** for a repository, ${inactive}.`,
+      `- **Established:** a GitHub project has at least ${minStars} stars when it is submitted.`,
+      '- **Working:** every link resolves.',
+    ].join('\n'),
+    guide: GUIDE.join('\n'),
+    checklist: [
+      '- [ ] One entry in this pull request.',
+      `- [ ] ${config.scope}`,
+      '- [ ] It is public and documented, and every link works.',
+      `- [ ] A GitHub project has at least ${minStars} stars.`,
+      `- [ ] Repositories: ${inactive}.`,
+      '- [ ] Format is `- [Name](https://link) - Short description.`',
+      '- [ ] Placed in the right section, in alphabetical order.',
+      '- [ ] Description is my own words, one sentence of 100 characters at most, ending with a period.',
+      '- [ ] I searched the list and it is not already here.',
+      '- [ ] I starred this repo if I found it helpful.',
+    ].join('\n'),
+    footer: [
+      '## Contributing',
+      '',
+      'Contributions are welcome. Read the [contribution guidelines](contributing.md) first.',
+      '',
+      `Maintained by [${config.maintainer.name}](${config.maintainer.url}).`,
+    ].join('\n'),
   };
 }
 
@@ -71,21 +125,6 @@ function syncText(text, values) {
 }
 
 /**
- * The kit-owned files a list's copy differs from, missing ones included.
- * @param {string} root - the repository folder
- * @returns {string[]} paths relative to the kit's files/ folder, sorted
- */
-function staleKitFiles(root) {
-  return fs.readdirSync(KIT_DIR, { recursive: true })
-    .filter((file) => fs.statSync(path.join(KIT_DIR, file)).isFile())
-    .filter((file) => {
-      const target = path.join(root, file);
-      return !fs.existsSync(target) || !fs.readFileSync(target).equals(fs.readFileSync(path.join(KIT_DIR, file)));
-    })
-    .sort();
-}
-
-/**
  * Sync the docs under a root folder from its `.github/awesome.json`, then
  * write each kit-owned file that differs.
  * @param {string} root - the repository folder
@@ -105,11 +144,7 @@ function sync(root) {
   const changed = results.filter((result) => result.text !== result.before);
   changed.forEach((result) => fs.writeFileSync(path.join(root, result.file), result.text));
 
-  const kit = staleKitFiles(root);
-  kit.forEach((file) => {
-    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    fs.copyFileSync(path.join(KIT_DIR, file), path.join(root, file));
-  });
+  const kit = copyFiles(KIT_DIR, root, { overwrite: true });
   return [...changed.map((result) => result.file), ...kit];
 }
 

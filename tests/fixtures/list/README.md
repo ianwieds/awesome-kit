@@ -33,10 +33,10 @@ Replace this paragraph with one or two sentences: what the topic is, and what th
 
 - [Node.js Learn](https://nodejs.org/en/learn) - Official guides to getting started with Node.js.
 
+<!-- awesome:footer -->
 ## Contributing
 
 Contributions are welcome. Read the [contribution guidelines](contributing.md) first.
 
-<!-- awesome:maintainer -->
 Maintained by [Ian Wiedenman](https://github.com/ianwieds).
-<!-- /awesome:maintainer -->
+<!-- /awesome:footer -->

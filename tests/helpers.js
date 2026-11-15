@@ -1,7 +1,7 @@
 /**
  * Test helpers: a fetch that answers from a route table and a fake `gh` (the
  * network boundary, the only stubs), a GitHub API repository body, a temp
- * copy of the fixture list, and a runner for the jobs/*.sh scripts.
+ * copy of the fixture list, and runners for the jobs/*.sh scripts and setup.
  */
 const fs = require('node:fs');
 const os = require('node:os');
@@ -63,35 +63,58 @@ function listCopy() {
 }
 
 /**
- * Run one jobs/<name>.sh as the action does, with a fake `gh` first on PATH
- * and nothing from this process's environment but PATH and HOME.
- * @param {string} name - the job, e.g. `pr-check`
- * @param {string} cwd - the list folder the job runs in
- * @param {Record<string, string>} [env] - extra variables, e.g. `FAKE_GH_HEAD`
+ * Run a command with a fake `gh` first on PATH and nothing from this
+ * process's environment but PATH and HOME.
+ * @param {string[]} command - the program and its arguments
+ * @param {string} cwd - the folder it runs in
+ * @param {(temp: string) => Record<string, string>} env - extra variables, given the run's temp folder
  * @returns {{ status: number, stdout: string, stderr: string, calls: Array<{ args: string[], body: string|null }> }}
  */
-function runJob(name, cwd, env = {}) {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'awesome-job-'));
+function runWithGh([program, ...args], cwd, env) {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'awesome-gh-'));
   const bin = path.join(temp, 'bin');
   const log = path.join(temp, 'gh.log');
   fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_GH}" "$@"\n`, { mode: 0o755 });
 
-  const result = spawnSync('bash', [path.join(KIT, 'jobs', `${name}.sh`)], {
+  const result = spawnSync(program, args, {
     cwd,
     encoding: 'utf8',
     env: {
       PATH: `${bin}:${path.dirname(process.execPath)}:${process.env.PATH}`,
       HOME: process.env.HOME,
-      RUNNER_TEMP: temp,
-      GITHUB_ACTION_PATH: KIT,
-      GITHUB_REPOSITORY: 'someone/awesome-fixture',
       FAKE_GH_LOG: log,
-      ...env,
+      ...env(temp),
     },
   });
   const calls = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line)) : [];
   return { status: result.status, stdout: result.stdout, stderr: result.stderr, calls };
 }
 
-module.exports = { routeFetch, repoAnswer, api, listCopy, runJob, KIT_FILES };
+/**
+ * Run one jobs/<name>.sh as the action does, through runWithGh.
+ * @param {string} name - the job, e.g. `pr-check`
+ * @param {string} cwd - the list folder the job runs in
+ * @param {Record<string, string>} [env] - extra variables, e.g. `FAKE_GH_HEAD`
+ * @returns {ReturnType<typeof runWithGh>}
+ */
+function runJob(name, cwd, env = {}) {
+  return runWithGh(['bash', path.join(KIT, 'jobs', `${name}.sh`)], cwd, (temp) => ({
+    RUNNER_TEMP: temp,
+    GITHUB_ACTION_PATH: KIT,
+    GITHUB_REPOSITORY: 'someone/awesome-fixture',
+    ...env,
+  }));
+}
+
+/**
+ * Run the CLI's setup command in a folder, through runWithGh.
+ * @param {string} dir - the list folder
+ * @param {Record<string, string>} [env] - the fake gh's answers, e.g. `FAKE_GH_USER`
+ * @returns {ReturnType<typeof runWithGh>}
+ */
+function runSetup(dir, env = {}) {
+  return runWithGh([process.execPath, path.join(KIT, 'bin', 'awesome.js'), 'setup', dir], dir, () => env);
+}
+
+module.exports = { routeFetch, repoAnswer, api, listCopy, runJob, runSetup, KIT_FILES };

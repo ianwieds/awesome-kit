@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { listCopy } = require('./helpers');
@@ -32,12 +33,20 @@ test('check with no config reads .github/awesome.json in the current folder', ()
 });
 
 test('an unknown command or a missing argument prints the usage line and exits 2', () => {
-  for (const args of [['deploy'], [], ['check', 'README.md'], ['sync', 'a', 'b']]) {
+  for (const args of [['deploy'], [], ['check', 'README.md'], ['sync', 'a', 'b'], ['setup', 'a', 'b']]) {
     const result = cli(args);
     assert.equal(result.status, 2, args.join(' '));
-    assert.match(result.stderr, /^usage: awesome-kit /, args.join(' '));
+    assert.match(result.stderr, /^usage: awesome-kit setup \[dir\] \| sync \[dir\] \| /, args.join(' '));
     assert.equal(result.stdout, '');
   }
+});
+
+test('setup is a known command: in a folder with no git origin it fails on that, not on usage', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'awesome-cli-'));
+  const result = cli(['setup', dir], FIXTURES);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /no "origin" remote/);
+  assert.deepEqual(fs.readdirSync(dir), []);
 });
 
 test('sync syncs the folder it is given, then reports it already in sync', () => {

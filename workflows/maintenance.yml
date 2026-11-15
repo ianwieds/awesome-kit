@@ -1,0 +1,26 @@
+name: Maintenance
+
+# Syncs the docs from .github/awesome.json and the kit, then keeps the
+# repository active so GitHub never pauses the scheduled sweep.
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One run at a time, so two runs never race to push to main.
+concurrency:
+  group: maintenance
+  cancel-in-progress: false
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ianwieds/awesome-kit@v2
+        with:
+          command: maintenance

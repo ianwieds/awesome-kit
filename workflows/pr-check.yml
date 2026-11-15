@@ -1,0 +1,18 @@
+name: PR check
+
+# The check reads the pull request's README as data and never runs its code.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ianwieds/awesome-kit@v2
+        with:
+          command: pr-check
